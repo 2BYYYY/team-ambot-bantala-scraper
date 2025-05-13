@@ -38,8 +38,6 @@ GROUND_DEFORMATION = "NO DATA"
 RAW_TEXT = "NO DATA"
 
 PROJECT_ID = "gdg-team-ambot"
-if not PROJECT_ID or PROJECT_ID == PROJECT_ID:
-    PROJECT_ID = str(os.environ.get("GOOGLE_CLOUD_PROJECT"))
 REGION = "us-central1"
 LOCATION = os.environ.get("GOOGLE_CLOUD_REGION", REGION)
 
@@ -163,18 +161,11 @@ def get_embeddings(
     Raises:
         Exception: Any exception encountered during embedding generation, excluding "RESOURCE_EXHAUSTED" errors.
     """
-    try:
-        print(f"Generating embeddings")
-        response = embedding_client.models.embed_content(
-            model=embedding_model,
-            contents=[text],
-        )
-        return response.embeddings[0].values
-    except Exception as e:
-        if "RESOURCE_EXHAUSTED" in str(e):
-            return None
-        print(f"Error generating embeddings: {str(e)}")
-        raise
+    response = embedding_client.models.embed_content(
+        model=embedding_model,
+        contents=[text],
+    )
+    return response.embeddings[0].values
 
 def clean_text(text: str) -> str:
     """
@@ -269,6 +260,6 @@ def upload_to_bigquery(df: pd.DataFrame, table_id: str):
     job.result()
 
     print(f"Successfully uploaded {len(df)} rows to {table_id}")
-raw_text = "on 2025-05-08, the kanlaon volcano had an alert level of 3 with no data on eruption and no data on activity the seismicity recorded 10 volcanic earthquakes, a sulfur dioxide flux of 1336 tonnes / day (07 may 2025), the plume observation was 900 meters tall, moderate continuous degassing southeast drift and the status of ground deformation was volcano edifice is inflated."
-retry_mini_vertex = build_index_from_raw_text(raw_text, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
+
+retry_mini_vertex = build_index_from_raw_text(RAW_TEXT, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
 upload_to_bigquery(retry_mini_vertex, table_id)
