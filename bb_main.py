@@ -59,91 +59,91 @@ MODEL = (
 TEXT_EMBEDDING_MODEL = "text-embedding-005"
 table_id = "gdg-team-ambot.spf_69.testing-bb"
 
-def scrape_phivolcs():
-    # Get Volcano Type
+
+# Get Volcano Type
+try:
+    VOLCANO = WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[1]"))
+    )
+    TYPE_VOLCANO = VOLCANO.text
+except Exception as e:
+    print(f"Error getting Volcano: {e}")
+
+# Get Bulletin Date
+try:
+    DATE = WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[3]"))
+    )
+    BULLETIN_DATE = DATE.text
+except Exception as e:
+    print(f"Error getting Bulletin Date: {e}")
+
+# Get First Row and Click
+try:
+    FIRST_ROW = WebDriverWait(driver, 20).until(
+        EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[4]"))
+    )
+    FIRST_ROW.click()
+except Exception as e:
+    print(f"Error clicking first row: {e}")
+
+# Switch to New Window
+window_handles = driver.window_handles
+driver.switch_to.window(window_handles[1])
+
+# Get Parameters
+try:
+    PARAMS = WebDriverWait(driver, 20).until(
+        EC.presence_of_all_elements_located((By.XPATH, "/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr"))
+    )
+except Exception as e:
+    print(f"Error getting parameters: {e}")
+
+# Get Alert Level
+try:
+    div_element = WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located((By.XPATH, "/html/body/div/div/div[3]/div[2]/div[1]/div[1]/div[2]/table/tbody/tr/td[2]/div"))
+    )
+    ALERT_LEVEL = div_element.text
+except Exception as e:
+    print(f"Error getting alert level: {e}")
+
+# Loop through Parameters
+for index_params in range(1, len(PARAMS) + 1):
     try:
-        VOLCANO = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[1]"))
+        TYPE_PARAMS = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[1]"))
         )
-        TYPE_VOLCANO = VOLCANO.text
-    except Exception as e:
-        print(f"Error getting Volcano: {e}")
+        CLEAN = str(TYPE_PARAMS.text.strip().lower())
+        TYPE_PARAMS_CLEAN = " ".join(CLEAN.split())
 
-    # Get Bulletin Date
-    try:
-        DATE = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[3]"))
+        DESCRIPTION_PARAMS = WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[2]/p"))
         )
-        BULLETIN_DATE = DATE.text
+
+        if TYPE_PARAMS_CLEAN == "eruption":
+            ERUPTION = DESCRIPTION_PARAMS.text
+        elif TYPE_PARAMS_CLEAN == "activity":
+            ACTIVITY = DESCRIPTION_PARAMS.text
+        elif TYPE_PARAMS_CLEAN == "seismicity":
+            SEISMICITY = DESCRIPTION_PARAMS.text
+        elif TYPE_PARAMS_CLEAN == "sulfur dioxide flux":
+            SULFUR_DIOXIDE_FLUX = DESCRIPTION_PARAMS.text
+        elif TYPE_PARAMS_CLEAN == "plume":
+            PLUME = DESCRIPTION_PARAMS.text
+        elif TYPE_PARAMS_CLEAN == "ground deformation":
+            GROUND_DEFORMATION = DESCRIPTION_PARAMS.text
     except Exception as e:
-        print(f"Error getting Bulletin Date: {e}")
+        print(f"Error processing parameter {index_params}: {e}")
 
-    # Get First Row and Click
-    try:
-        FIRST_ROW = WebDriverWait(driver, 20).until(
-            EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[4]"))
-        )
-        FIRST_ROW.click()
-    except Exception as e:
-        print(f"Error clicking first row: {e}")
+RAW_TEXT = f"On {BULLETIN_DATE}, the {TYPE_VOLCANO} volcano had an Alert Level of {ALERT_LEVEL} with {ERUPTION} on Eruption and {ACTIVITY} on Activity, the Seismicity recorded {SEISMICITY}, a Sulfur Dioxide Flux of {SULFUR_DIOXIDE_FLUX}, the Plume observation was {PLUME} and the status of Ground Deformation was {GROUND_DEFORMATION}."
+print(RAW_TEXT)
+print("Data Extracted")
 
-    # Switch to New Window
-    window_handles = driver.window_handles
-    driver.switch_to.window(window_handles[1])
-
-    # Get Parameters
-    try:
-        PARAMS = WebDriverWait(driver, 20).until(
-            EC.presence_of_all_elements_located((By.XPATH, "/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr"))
-        )
-    except Exception as e:
-        print(f"Error getting parameters: {e}")
-
-    # Get Alert Level
-    try:
-        div_element = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, "/html/body/div/div/div[3]/div[2]/div[1]/div[1]/div[2]/table/tbody/tr/td[2]/div"))
-        )
-        ALERT_LEVEL = div_element.text
-    except Exception as e:
-        print(f"Error getting alert level: {e}")
-
-    # Loop through Parameters
-    for index_params in range(1, len(PARAMS) + 1):
-        try:
-            TYPE_PARAMS = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[1]"))
-            )
-            CLEAN = str(TYPE_PARAMS.text.strip().lower())
-            TYPE_PARAMS_CLEAN = " ".join(CLEAN.split())
-
-            DESCRIPTION_PARAMS = WebDriverWait(driver, 20).until(
-                EC.presence_of_element_located((By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[2]/p"))
-            )
-
-            if TYPE_PARAMS_CLEAN == "eruption":
-                ERUPTION = DESCRIPTION_PARAMS.text
-            elif TYPE_PARAMS_CLEAN == "activity":
-                ACTIVITY = DESCRIPTION_PARAMS.text
-            elif TYPE_PARAMS_CLEAN == "seismicity":
-                SEISMICITY = DESCRIPTION_PARAMS.text
-            elif TYPE_PARAMS_CLEAN == "sulfur dioxide flux":
-                SULFUR_DIOXIDE_FLUX = DESCRIPTION_PARAMS.text
-            elif TYPE_PARAMS_CLEAN == "plume":
-                PLUME = DESCRIPTION_PARAMS.text
-            elif TYPE_PARAMS_CLEAN == "ground deformation":
-                GROUND_DEFORMATION = DESCRIPTION_PARAMS.text
-        except Exception as e:
-            print(f"Error processing parameter {index_params}: {e}")
-
-    RAW_TEXT = f"On {BULLETIN_DATE}, the {TYPE_VOLCANO} volcano had an Alert Level of {ALERT_LEVEL} with {ERUPTION} on Eruption and {ACTIVITY} on Activity, the Seismicity recorded {SEISMICITY}, a Sulfur Dioxide Flux of {SULFUR_DIOXIDE_FLUX}, the Plume observation was {PLUME} and the status of Ground Deformation was {GROUND_DEFORMATION}."
-    print(RAW_TEXT)
-    print("Data Extracted")
-
-    # Close the browser
-    driver.close()
-    driver.switch_to.window(window_handles[0])
-    driver.quit()
+# Close the browser
+driver.close()
+driver.switch_to.window(window_handles[0])
+driver.quit()
 
 @retry(wait=wait_random_exponential(multiplier=1, max=120), stop=stop_after_attempt(10))
 def get_embeddings(
@@ -267,6 +267,5 @@ def upload_to_bigquery(df: pd.DataFrame, table_id: str):
 
     print(f"Successfully uploaded {len(df)} rows to {table_id}")
 
-scrape_phivolcs()
 retry_mini_vertex = build_index_from_raw_text(RAW_TEXT, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
 upload_to_bigquery(retry_mini_vertex, table_id)
