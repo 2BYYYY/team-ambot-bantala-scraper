@@ -55,7 +55,7 @@ MODEL = (
     f"projects/{PROJECT_ID}/locations/{LOCATION}/publishers/google/models/{MODEL_ID}"
 )
 TEXT_EMBEDDING_MODEL = "text-embedding-005"
-table_id = "gdg-team-ambot.spf_69.testing-bb"
+table_id = "gdg-team-ambot.spf_69.bb-main-data-solcha"
 
 
 # Get Volcano Type
@@ -161,11 +161,17 @@ def get_embeddings(
     Raises:
         Exception: Any exception encountered during embedding generation, excluding "RESOURCE_EXHAUSTED" errors.
     """
-    response = embedding_client.models.embed_content(
-        model=embedding_model,
-        contents=[text],
-    )
-    return response.embeddings[0].values
+    try:
+        response = embedding_client.models.embed_content(
+            model=embedding_model,
+            contents=[text],
+        )
+        return response.embeddings[0].values
+    except Exception as e:
+        if "RESOURCE_EXHAUSTED" in str(e):
+            return None
+        print(f"Error generating embeddings: {str(e)}")
+        raise
 
 def clean_text(text: str) -> str:
     """

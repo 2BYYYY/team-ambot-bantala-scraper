@@ -25,3 +25,4 @@ pandas==2.2.3
 google-cloud-bigquery==3.32.0
 tenacity==9.1.2
 regex==2024.11.6
+pyarrow==20.0.0
