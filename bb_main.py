@@ -269,6 +269,6 @@ def upload_to_bigquery(df: pd.DataFrame, table_id: str):
     job.result()
 
     print(f"Successfully uploaded {len(df)} rows to {table_id}")
-
-retry_mini_vertex = build_index_from_raw_text(RAW_TEXT, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
+raw_text = "on 2025-05-08, the kanlaon volcano had an alert level of 3 with no data on eruption and no data on activity the seismicity recorded 10 volcanic earthquakes, a sulfur dioxide flux of 1336 tonnes / day (07 may 2025), the plume observation was 900 meters tall, moderate continuous degassing southeast drift and the status of ground deformation was volcano edifice is inflated."
+retry_mini_vertex = build_index_from_raw_text(raw_text, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
 upload_to_bigquery(retry_mini_vertex, table_id)
