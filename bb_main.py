@@ -145,9 +145,11 @@ driver.close()
 driver.switch_to.window(window_handles[0])
 driver.quit()
 
+print("Browser closed, beginning to build index")
+
 @retry(wait=wait_random_exponential(multiplier=1, max=120), stop=stop_after_attempt(10))
 def get_embeddings(
-    embedding_client: Any, embedding_model: str, text: str, output_dim: int = 768
+    embedding_client: Any, embedding_model: str, text: str
 ) -> list[float]:
     """
     Generate embeddings for text with retry logic for API quota management.
@@ -162,6 +164,7 @@ def get_embeddings(
         Exception: Any exception encountered during embedding generation, excluding "RESOURCE_EXHAUSTED" errors.
     """
     try:
+        print(f"Generating embeddings")
         response = embedding_client.models.embed_content(
             model=embedding_model,
             contents=[text],
