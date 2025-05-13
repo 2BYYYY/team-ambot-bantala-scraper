@@ -267,5 +267,6 @@ def upload_to_bigquery(df: pd.DataFrame, table_id: str):
 
     print(f"Successfully uploaded {len(df)} rows to {table_id}")
 
+scrape_phivolcs()
 retry_mini_vertex = build_index_from_raw_text(RAW_TEXT, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
 upload_to_bigquery(retry_mini_vertex, table_id)
