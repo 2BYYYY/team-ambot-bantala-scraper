@@ -79,7 +79,7 @@ except Exception as e:
 # Get First Row and Click
 try:
     FIRST_ROW = WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[4]"))
+        EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[5]"))
     )
     FIRST_ROW.click()
 except Exception as e:
