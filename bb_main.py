@@ -49,11 +49,6 @@ client = genai.Client(
 )
 
 client_bigquery = bigquery.Client()
-
-MODEL_ID = "gemini-2.0-flash-live-preview-04-09"
-MODEL = (
-    f"projects/{PROJECT_ID}/locations/{LOCATION}/publishers/google/models/{MODEL_ID}"
-)
 TEXT_EMBEDDING_MODEL = "text-embedding-005"
 table_id = "gdg-team-ambot.spf_69.bb-main-data-solcha"
 
