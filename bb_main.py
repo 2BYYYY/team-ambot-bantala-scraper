@@ -12,133 +12,166 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 
-# Set up Chrome options for headless mode
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # Run in headless mode
-chrome_options.add_argument("--disable-gpu")  # Disable GPU acceleration (Windows-specific)
-chrome_options.add_argument("--no-sandbox")  # Recommended for Linux
-
-# Set up WebDriver with service
-service = Service("/usr/local/bin/chromedriver")  # Path where Docker installed it
-driver = webdriver.Chrome(service=service, options=chrome_options)
-
+# --- Configuration ---
 PHIVOLCS_URL = "https://wovodat.phivolcs.dost.gov.ph/bulletin/list-of-bulletin?vdId=565&type=bulletin&sdate=2021-01-01&edate=&page=1"
-driver.get(PHIVOLCS_URL)
-
-# Initializing variables
-TYPE_VOLCANO = "NO DATA"
-BULLETIN_DATE = "NO DATA"
-ALERT_LEVEL = "NO DATA"
-ERUPTION = "NO DATA"
-ACTIVITY = "NO DATA"
-SEISMICITY = "NO DATA"
-SULFUR_DIOXIDE_FLUX = "NO DATA"
-PLUME = "NO DATA"
-GROUND_DEFORMATION = "NO DATA"
-RAW_TEXT = "NO DATA"
-
 PROJECT_ID = "gdg-team-ambot"
 REGION = "us-central1"
 LOCATION = os.environ.get("GOOGLE_CLOUD_REGION", REGION)
-
-# Vertex AI API
-client = genai.Client(
-    vertexai=True,
-    project=PROJECT_ID,
-    location=LOCATION,
-)
-
-client_bigquery = bigquery.Client()
 TEXT_EMBEDDING_MODEL = "text-embedding-005"
-table_id = "gdg-team-ambot.spf_69.bb-main-data-solcha"
+TABLE_ID = "gdg-team-ambot.spf_69.bb-main-data-solcha"
 
+# --- Google Clients ---
+client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
+client_bigquery = bigquery.Client()
 
-# Get Volcano Type
-try:
-    VOLCANO = WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[1]"))
-    )
-    TYPE_VOLCANO = VOLCANO.text
-except Exception as e:
-    print(f"Error getting Volcano: {e}")
+def setup_driver() -> webdriver.Chrome:
+    """Set up and return a headless Chrome WebDriver."""
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--no-sandbox")
+    service = Service("/usr/local/bin/chromedriver")
+    return webdriver.Chrome(service=service, options=chrome_options)
 
-# Get Bulletin Date
-try:
-    DATE = WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located((By.XPATH, f"/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[3]"))
-    )
-    BULLETIN_DATE = DATE.text
-except Exception as e:
-    print(f"Error getting Bulletin Date: {e}")
+def extract_volcano_data(driver: webdriver.Chrome) -> tuple[dict, list]:
+    """
+    Extract volcano bulletin data from PHIVOLCS website.
+    Args:
+        driver: The Chrome Webdriver instance used for scraping.
+    Returns:
+        - data: A dictionary with volcano info.
+        - window_handles: A list of browser window handles (the instance of driver.window_handles).
+    """
+    data = {
+        "TYPE_VOLCANO": "NO DATA",
+        "BULLETIN_DATE": "NO DATA",
+        "ALERT_LEVEL": "NO DATA",
+        "ERUPTION": "NO DATA",
+        "ACTIVITY": "NO DATA",
+        "SEISMICITY": "NO DATA",
+        "SULFUR_DIOXIDE_FLUX": "NO DATA",
+        "PLUME": "NO DATA",
+        "GROUND_DEFORMATION": "NO DATA",
+    }
 
-# Get First Row and Click
-try:
-    FIRST_ROW = WebDriverWait(driver, 20).until(
-        EC.element_to_be_clickable((By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[5]"))
-    )
-    FIRST_ROW.click()
-except Exception as e:
-    print(f"Error clicking first row: {e}")
+    driver.get(PHIVOLCS_URL)
+    wait = WebDriverWait(driver, 20)
 
-# Switch to New Window
-window_handles = driver.window_handles
-driver.switch_to.window(window_handles[1])
-
-# Get Parameters
-try:
-    PARAMS = WebDriverWait(driver, 20).until(
-        EC.presence_of_all_elements_located((By.XPATH, "/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr"))
-    )
-except Exception as e:
-    print(f"Error getting parameters: {e}")
-
-# Get Alert Level
-try:
-    div_element = WebDriverWait(driver, 20).until(
-        EC.presence_of_element_located((By.XPATH, "/html/body/div/div/div[3]/div[2]/div[1]/div[1]/div[2]/table/tbody/tr/td[2]/div"))
-    )
-    ALERT_LEVEL = div_element.text
-except Exception as e:
-    print(f"Error getting alert level: {e}")
-
-# Loop through Parameters
-for index_params in range(1, len(PARAMS) + 1):
+    # Get Volcano Type
     try:
-        TYPE_PARAMS = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[1]"))
+        VOLCANO = wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[1]")
+            )
         )
-        CLEAN = str(TYPE_PARAMS.text.strip().lower())
-        TYPE_PARAMS_CLEAN = " ".join(CLEAN.split())
-
-        DESCRIPTION_PARAMS = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[2]/p"))
-        )
-
-        if TYPE_PARAMS_CLEAN == "eruption":
-            ERUPTION = DESCRIPTION_PARAMS.text
-        elif TYPE_PARAMS_CLEAN == "activity":
-            ACTIVITY = DESCRIPTION_PARAMS.text
-        elif TYPE_PARAMS_CLEAN == "seismicity":
-            SEISMICITY = DESCRIPTION_PARAMS.text
-        elif TYPE_PARAMS_CLEAN == "sulfur dioxide flux":
-            SULFUR_DIOXIDE_FLUX = DESCRIPTION_PARAMS.text
-        elif TYPE_PARAMS_CLEAN == "plume":
-            PLUME = DESCRIPTION_PARAMS.text
-        elif TYPE_PARAMS_CLEAN == "ground deformation":
-            GROUND_DEFORMATION = DESCRIPTION_PARAMS.text
+        data["TYPE_VOLCANO"] = VOLCANO.text
     except Exception as e:
-        print(f"Error processing parameter {index_params}: {e}")
+        print(f"Error getting Volcano: {e}")
 
-RAW_TEXT = f"On {BULLETIN_DATE}, the {TYPE_VOLCANO} volcano had an Alert Level of {ALERT_LEVEL} with {ERUPTION} on Eruption and {ACTIVITY} on Activity, the Seismicity recorded {SEISMICITY}, a Sulfur Dioxide Flux of {SULFUR_DIOXIDE_FLUX}, the Plume observation was {PLUME} and the status of Ground Deformation was {GROUND_DEFORMATION}."
-print(RAW_TEXT)
-print("Data Extracted")
+    # Get Bulletin Date
+    try:
+        DATE = wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[3]")
+            )
+        )
+        data["BULLETIN_DATE"] = DATE.text
+    except Exception as e:
+        print(f"Error getting Bulletin Date: {e}")
 
-# Close the browser
-driver.close()
-driver.switch_to.window(window_handles[0])
-driver.quit()
+    # Get First Row and Click
+    try:
+        FIRST_ROW = wait.until(
+            EC.element_to_be_clickable(
+                (By.XPATH, "/html/body/div[2]/div[3]/div/div/div[2]/form/div/div[3]/div[4]/table/tbody/tr[1]/td[5]")
+            )
+        )
+        FIRST_ROW.click()
+    except Exception as e:
+        print(f"Error clicking first row: {e}")
 
-print("Browser closed, beginning to build index")
+    # Switch to New Window
+    window_handles = driver.window_handles
+    driver.switch_to.window(window_handles[1])
+
+    # Get Parameters
+    try:
+        PARAMS = wait.until(
+            EC.presence_of_all_elements_located(
+                (By.XPATH, "/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr")
+            )
+        )
+    except Exception as e:
+        print(f"Error getting parameters: {e}")
+        PARAMS = []
+
+    # Get Alert Level
+    try:
+        div_element = wait.until(
+            EC.presence_of_element_located(
+                (By.XPATH, "/html/body/div/div/div[3]/div[2]/div[1]/div[1]/div[2]/table/tbody/tr/td[2]/div")
+            )
+        )
+        data["ALERT_LEVEL"] = div_element.text
+    except Exception as e:
+        print(f"Error getting alert level: {e}")
+
+    # Loop through Parameters
+    for index_params in range(1, len(PARAMS) + 1):
+        try:
+            TYPE_PARAMS = wait.until(
+                EC.presence_of_element_located(
+                    (By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[1]")
+                )
+            )
+            CLEAN = str(TYPE_PARAMS.text.strip().lower())
+            TYPE_PARAMS_CLEAN = " ".join(CLEAN.split())
+
+            # The text form each parameters
+            DESCRIPTION_PARAMS = wait.until(
+                EC.presence_of_element_located(
+                    (By.XPATH, f"/html/body/div/div/div[3]/div[2]/div[3]/div/table/tbody/tr[{index_params}]/td[2]/p")
+                )
+            )
+
+            if TYPE_PARAMS_CLEAN == "eruption":
+                data["ERUPTION"] = DESCRIPTION_PARAMS.text
+            elif TYPE_PARAMS_CLEAN == "activity":
+                data["ACTIVITY"] = DESCRIPTION_PARAMS.text
+            elif TYPE_PARAMS_CLEAN == "seismicity":
+                data["SEISMICITY"] = DESCRIPTION_PARAMS.text
+            elif TYPE_PARAMS_CLEAN == "sulfur dioxide flux":
+                data["SULFUR_DIOXIDE_FLUX"] = DESCRIPTION_PARAMS.text
+            elif TYPE_PARAMS_CLEAN == "plume":
+                data["PLUME"] = DESCRIPTION_PARAMS.text
+            elif TYPE_PARAMS_CLEAN == "ground deformation":
+                data["GROUND_DEFORMATION"] = DESCRIPTION_PARAMS.text
+        except Exception as e:
+            print(f"Error processing parameter {index_params}: {e}")
+
+    return data, window_handles
+
+def build_raw_text(data: dict) -> str:
+    """
+    Format the extracted volcano data into a summary string.
+    Args:
+        data: A dictionary containing volcano information.
+    Returns:
+        A formatted string summarizing the volcano bulletin data.
+    """
+    return (
+        f"On {data['BULLETIN_DATE']}, the {data['TYPE_VOLCANO']} volcano had an Alert Level of {data['ALERT_LEVEL']} "
+        f"with {data['ERUPTION']} on Eruption and {data['ACTIVITY']} on Activity, the Seismicity recorded {data['SEISMICITY']}, "
+        f"a Sulfur Dioxide Flux of {data['SULFUR_DIOXIDE_FLUX']}, the Plume observation was {data['PLUME']} and the status of "
+        f"Ground Deformation was {data['GROUND_DEFORMATION']}."
+    )
+
+def close_driver(driver: webdriver.Chrome, window_handles: list):
+    """Close browser windows and quit driver."""
+    driver.close()
+    driver.switch_to.window(window_handles[0])
+    driver.quit()
+    print("Browser closed, beginning to build index")
 
 @retry(wait=wait_random_exponential(multiplier=1, max=120), stop=stop_after_attempt(10))
 def get_embeddings(
@@ -176,6 +209,10 @@ def clean_text(text: str) -> str:
     - Removing excessive whitespace
     - Lowercasing
     - Optionally removing extra punctuation
+    Args:
+        text: The input string to be cleaned.
+    Returns:
+        A cleaned string suitable for embedding generation.
     """
     text = re.sub(r'[^\x20-\x7E\n\r\t]', '', text)
     text = re.sub(r'[\n\r\t]+', ' ', text)
@@ -211,7 +248,7 @@ def build_index_from_raw_text(
             sentence.strip() + '.'
             for sentence in text_done.strip().split('.')
             if sentence.strip()
-          ]
+        ]
 
         for chunk_num, chunk_text in enumerate(chunks):
             embeddings = get_embeddings(
@@ -219,8 +256,8 @@ def build_index_from_raw_text(
             )
             # Important to know what chunks did not embed
             if embeddings is None:
-              print(f"Error generating embeddings for chunk {chunk_text}")
-              continue
+                print(f"Error generating embeddings for chunk {chunk_text}")
+                continue
 
             chunk_info = {
                 "chunk_text": chunk_text,
@@ -257,10 +294,18 @@ def upload_to_bigquery(df: pd.DataFrame, table_id: str):
     )
 
     job = client_bigquery.load_table_from_dataframe(df, table_id, job_config=job_config)
-
     job.result()
-
     print(f"Successfully uploaded {len(df)} rows to {table_id}")
 
-retry_mini_vertex = build_index_from_raw_text(RAW_TEXT, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
-upload_to_bigquery(retry_mini_vertex, table_id)
+def main():
+    driver = setup_driver()
+    data, window_handles = extract_volcano_data(driver)
+    raw_text = build_raw_text(data)
+    print(raw_text)
+    print("Data Extracted")
+    close_driver(driver, window_handles)
+    index_df = build_index_from_raw_text(raw_text, embedding_client=client, embedding_model=TEXT_EMBEDDING_MODEL)
+    upload_to_bigquery(index_df, TABLE_ID)
+
+if __name__ == "__main__":
+    main()
